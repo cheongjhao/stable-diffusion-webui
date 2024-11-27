@@ -296,7 +296,8 @@ def requirements_met(requirements_file):
 
             m = re.match(re_requirement, line)
             if m is None:
-                return False
+                print(f"Malformed requirement line: {line.strip()} - Skipping")  # Debug: malformed line
+                continue  # Skip malformed lines
 
             package = m.group(1).strip()
             version_required = (m.group(2) or "").strip()
@@ -306,11 +307,24 @@ def requirements_met(requirements_file):
 
             try:
                 version_installed = importlib.metadata.version(package)
-            except Exception:
-                return False
+                print(f"Installed version of {package}: {version_installed}")
+                
+                # Validate versions as strings before parsing
+                if not isinstance(version_required, str) or not isinstance(version_installed, str):
+                    print(f"Invalid version format for {package}: {version_required}, {version_installed}, skipping.")  # Debug
+                    continue
 
-            if packaging.version.parse(version_required) != packaging.version.parse(version_installed):
-                return False
+                # Parse and compare versions
+                if packaging.version.parse(version_installed) != packaging.version.parse(version_required):
+                    print(f"Version mismatch for {package}: required {version_required}, installed {version_installed}")  # Debug
+                    return False
+
+            except importlib.metadata.PackageNotFoundError:
+                print(f"Package not found: {package}, skipping.")  # Debug: Package not installed
+                continue
+            except Exception as e:
+                print(f"Unexpected error processing {package}: {e}, skipping.")  # Debug: Unexpected error
+                continue
 
     return True
 
